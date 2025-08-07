@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  file-server:
+    build: .
+    ports:
+      - "3004:3004"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=4096
+    restart: unless-stopped
+    # Configurações para uploads grandes
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M

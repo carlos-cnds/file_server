@@ -6,6 +6,17 @@ const app = express();
 const port = 3004;
 const fs = require('fs');
 
+// Configurações para uploads grandes
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
+
+// Middleware para configurar timeouts
+app.use((req, res, next) => {
+    req.setTimeout(600000); // 10 minutos
+    res.setTimeout(600000); // 10 minutos
+    next();
+});
+
 
 // Multer Configuration
 const storage = multer.diskStorage({
@@ -18,14 +29,25 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+    storage,
+    limits: {
+        fileSize: 500 * 1024 * 1024, // 500MB limit
+        fieldSize: 500 * 1024 * 1024  // 500    MB field size limit
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server is running on ${port}`);
 });
 
 // File Upload Endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
+app.post('/upload', (req, res, next) => {
+    // Aumenta o timeout para 10 minutos
+    req.setTimeout(600000); // 10 minutos
+    res.setTimeout(600000); // 10 minutos
+    next();
+}, upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }

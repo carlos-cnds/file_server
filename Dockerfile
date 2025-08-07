@@ -19,5 +19,8 @@ RUN mkdir -p uploads
 # Expõe a porta que a aplicação usa
 EXPOSE 3004
 
+# Configurações para uploads grandes
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Define o comando para iniciar a aplicação
 CMD ["node", "index.js"]
