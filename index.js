@@ -21,7 +21,16 @@ app.use((req, res, next) => {
 // Multer Configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        // Pega a pasta do header, se não tiver usa 'uploads'
+        const folder = req.headers['folder'] || 'uploads';
+        const uploadPath = path.join('uploads', folder);
+
+        // Cria a pasta se não existir
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+
+        cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         var splt = file.originalname.toString().split('.');
@@ -29,7 +38,7 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ 
+const upload = multer({
     storage,
     limits: {
         fileSize: 500 * 1024 * 1024, // 500MB limit
@@ -51,31 +60,89 @@ app.post('/upload', (req, res, next) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
-    res.json({ message: 'File uploaded successfully', filename: req.file.filename });
+
+    const folder = req.headers['folder'] || 'uploads';
+    res.json({
+        message: 'File uploaded successfully',
+        filename: req.file.filename,
+        folder: folder,
+        path: req.file.path
+    });
 });
 app.get('/file/:name', (req, res) => {
+    // Pega a pasta do header, se não tiver usa 'uploads'
+    const folder = req.headers['folder'] || 'uploads';
+    const filePath = path.join('uploads', folder, req.params.name);
+
+    // Verifica se o arquivo existe
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+
     const options = {
         root: path.join(__dirname)
     };
-    const fileName = '/uploads/' + req.params.name;
-    res.sendFile(fileName, options, function (err) {
+
+    res.sendFile(filePath, options, function (err) {
         if (err) {
             console.error('Error sending file:', err);
+            res.status(500).json({ error: 'Error sending file' });
         } else {
-            console.log('Sent:', fileName);
+            console.log('Sent:', filePath);
         }
     });
 });
 
-app.delete('/delete/:name', upload.single('file'), (req, res) => {
-    var pathToDelete = path.join(__dirname + '/uploads/' + req.params.name)
-    console.log(pathToDelete)
+app.delete('/delete/:name', (req, res) => {
+    // Pega a pasta do header, se não tiver usa 'uploads'
+    const folder = req.headers['folder'] || 'uploads';
+    const pathToDelete = path.join(__dirname, 'uploads', folder, req.params.name);
+
+    console.log('Tentando deletar:', pathToDelete);
+
+    // Verifica se o arquivo existe antes de tentar deletar
+    if (!fs.existsSync(pathToDelete)) {
+        return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
     fs.unlink(pathToDelete, (err) => {
         if (err) {
-            res.json({ sucess: false });
-        } else{
-            res.json({ sucess: true })
+            console.error('Erro ao deletar arquivo:', err);
+            res.status(500).json({ success: false, error: 'Error deleting file' });
+        } else {
+            console.log('Arquivo deletado com sucesso:', pathToDelete);
+            res.json({ success: true, message: 'File deleted successfully' });
         }
     });
-    
+});
+
+// Endpoint para listar arquivos de uma pasta
+app.get('/files', (req, res) => {
+    const folder = req.headers['folder'] || 'uploads';
+    const folderPath = path.join(__dirname, 'uploads', folder);
+
+    // Cria a pasta se não existir
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+        return res.json({ files: [], folder: folder });
+    }
+
+    fs.readdir(folderPath, (err, files) => {
+        if (err) {
+            console.error('Erro ao listar arquivos:', err);
+            return res.status(500).json({ error: 'Error listing files' });
+        }
+
+        // Filtra apenas arquivos (não diretórios)
+        const fileList = files.filter(file => {
+            const filePath = path.join(folderPath, file);
+            return fs.statSync(filePath).isFile();
+        });
+
+        res.json({
+            files: fileList,
+            folder: folder,
+            count: fileList.length
+        });
+    });
 });
