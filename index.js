@@ -25,6 +25,7 @@ const storage = multer.diskStorage({
         const folder = req.headers['folder'] || 'uploads';
         const uploadPath = path.join('uploads', folder);
 
+        console.log('Upload path:', uploadPath);
         // Cria a pasta se não existir
         if (!fs.existsSync(uploadPath)) {
             fs.mkdirSync(uploadPath, { recursive: true });
@@ -60,6 +61,8 @@ app.post('/upload', (req, res, next) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    console.log('File uploaded:', req.file);
 
     const folder = req.headers['folder'] || 'uploads';
     res.json({
