@@ -20,10 +20,10 @@ app.use((req, res, next) => {
 
 // Multer Configuration
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
+    destination: (req, _file, cb) => {
         // Pega a pasta do header, se não tiver usa 'uploads'
         const folder = req.headers['folder'] || 'uploads';
-        const uploadPath = path.join('uploads', folder);
+        const uploadPath = path.join(__dirname, 'uploads', folder);
 
         console.log('Upload path:', uploadPath);
         // Cria a pasta se não existir
@@ -33,7 +33,7 @@ const storage = multer.diskStorage({
 
         cb(null, uploadPath);
     },
-    filename: (req, file, cb) => {
+    filename: (_req, file, cb) => {
         var splt = file.originalname.toString().split('.');
         return cb(null, uuidv4() + '.' + splt.slice(-1));
     },
